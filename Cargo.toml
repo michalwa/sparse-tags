@@ -1,0 +1,14 @@
+[package]
+name = "sparse-tags"
+version = "0.1.0"
+edition = "2024"
+
+[dev-dependencies]
+itertools = "0.14.0"
+rand = "0.10.1"
+
+[dependencies]
+indexmap = "2.14.0"
+slab = "0.4.12"
+stable-vec = "0.4.2"
+typed-arena = "2.0.2"
