@@ -3,6 +3,9 @@ name = "sparse-tags"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+lightweight-benchmarks = []
+
 [dev-dependencies]
 itertools = "0.14.0"
 rand = "0.10.1"

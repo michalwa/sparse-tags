@@ -159,12 +159,19 @@ mod benches {
     use crate::{Store, naive::NaiveStore, sparse::SparseStore};
 
     fn populate_store(store: &mut impl Store<String, String>) {
+        // Optionally reduce the size of test fixtures to speed up testing
+        let (num_entries, num_tags_per_entry) = if cfg!(feature = "lightweight-benchmarks") {
+            (100, 10)
+        } else {
+            (100_000, 100)
+        };
+
         let tag_keys: Vec<_> = (0..1000).map(|_| random_string()).collect();
 
-        for _ in 0..100_000 {
+        for _ in 0..num_entries {
             let entry = store.insert_entry();
 
-            for _ in 0..100 {
+            for _ in 0..num_tags_per_entry {
                 store.insert_tag(
                     entry,
                     tag_keys.choose(&mut rand::rng()).unwrap().clone(),
