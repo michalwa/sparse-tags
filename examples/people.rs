@@ -3,19 +3,23 @@ use sparse_tags::{SparseStore, Store};
 fn main() {
     let mut store = SparseStore::new();
 
-    let john = store.insert_entry_with([
-        ("first_name", "John"),
-        ("last_name", "Doe"),
-        ("city", "Berlin"),
-    ]);
-    let anna = store.insert_entry_with([("first_name", "Anna"), ("city", "Warsaw")]);
-    let greg = store.insert_entry_with([("first_name", "Greg"), ("last_name", "Fletcher")]);
-    let king = store.insert_entry_with([("last_name", "King")]);
+    let john = store.insert_entry_with(
+        1,
+        [
+            ("first_name", "John"),
+            ("last_name", "Doe"),
+            ("city", "Berlin"),
+        ],
+    );
+    let anna = store.insert_entry_with(2, [("first_name", "Anna"), ("city", "Warsaw")]);
+    let greg = store.insert_entry_with(3, [("first_name", "Greg"), ("last_name", "Fletcher")]);
+    let king = store.insert_entry_with(4, [("last_name", "King")]);
 
     // List all tags
     // You could also iterate over all entries using `store.entries()`
-    for (i, person) in [john, greg, anna, king].into_iter().enumerate() {
-        println!("Person #{i}: ");
+    for person in [john, greg, anna, king].into_iter() {
+        let id = store.entry_data(person);
+        println!("Person #{id}: ");
 
         for (k, v) in store.tags_by_entry(person) {
             println!("  {k}: {v}");

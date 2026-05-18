@@ -8,11 +8,25 @@ use crate::{EntryId, Store};
 
 /// A 2-axis doubly-linked list implementation of a [`Store`]. Refer to
 /// [`Store`] for more general documentation.
-pub struct SparseStore<K, V> {
+pub struct SparseStore<K, V, E = ()> {
     /// Uses `StableVec` instead of `Slab` to preserve the insertion order
-    entry_lists: StableVec<NodeList<EntryAxis>>,
+    entries: StableVec<Entry<E>>,
     key_lists: IndexMap<K, NodeList<KeyAxis>>,
     nodes: Slab<Node<V>>,
+}
+
+struct Entry<E> {
+    data: E,
+    nodes: NodeList<EntryAxis>,
+}
+
+impl<E> Entry<E> {
+    fn new(data: E) -> Self {
+        Self {
+            data,
+            nodes: NodeList::Empty,
+        }
+    }
 }
 
 struct Node<V> {
@@ -135,33 +149,33 @@ impl NodeList<EntryAxis> {
     }
 }
 
-impl<K, V> Default for SparseStore<K, V> {
+impl<K, V, E> Default for SparseStore<K, V, E> {
     fn default() -> Self {
         Self {
-            entry_lists: StableVec::new(),
+            entries: StableVec::new(),
             key_lists: IndexMap::new(),
             nodes: Slab::new(),
         }
     }
 }
 
-impl<K, V> SparseStore<K, V> {
+impl<K, V, E> SparseStore<K, V, E> {
     pub fn new() -> Self {
         Self::default()
     }
 }
 
-impl<K: Hash + Eq, V> Store<K, V> for SparseStore<K, V> {
+impl<K: Hash + Eq, V, E> Store<K, V, E> for SparseStore<K, V, E> {
     fn len(&self) -> usize {
-        self.entry_lists.num_elements()
+        self.entries.num_elements()
     }
 
     fn is_empty(&self) -> bool {
-        self.entry_lists.is_empty()
+        self.entries.is_empty()
     }
 
-    fn insert_entry(&mut self) -> EntryId {
-        EntryId(self.entry_lists.push(NodeList::Empty))
+    fn insert_entry(&mut self, data: E) -> EntryId {
+        EntryId(self.entries.push(Entry::new(data)))
     }
 
     fn insert_tag(&mut self, id: EntryId, k: K, v: V) {
@@ -169,24 +183,50 @@ impl<K: Hash + Eq, V> Store<K, V> for SparseStore<K, V> {
         let key_index = key_entry.index();
         let nodes_by_key = key_entry.or_insert(NodeList::Empty);
 
-        let nodes_by_entry = &mut self.entry_lists[id.0];
+        let nodes_by_entry = &mut self.entries[id.0].nodes;
 
         let node = self.nodes.insert(Node::new(id, key_index, v));
         nodes_by_entry.append(&mut self.nodes, node);
         nodes_by_key.append(&mut self.nodes, node);
     }
 
-    fn remove_entry(&mut self, id: EntryId) {
+    fn remove_entry(&mut self, id: EntryId) -> E {
         self.clear_entry(id);
-        self.entry_lists.remove(id.0);
+        self.entries.remove(id.0).unwrap().data
     }
 
     fn clear_entry(&mut self, id: EntryId) {
-        self.entry_lists[id.0].clear_entry(&mut self.nodes, &mut self.key_lists);
+        self.entries[id.0]
+            .nodes
+            .clear_entry(&mut self.nodes, &mut self.key_lists);
     }
 
-    fn entries(&self) -> impl Iterator<Item = EntryId> {
-        self.entry_lists.iter().map(|(i, _)| EntryId(i))
+    fn entry_data(&self, id: EntryId) -> &E {
+        &self.entries[id.0].data
+    }
+
+    fn entry_data_mut(&mut self, id: EntryId) -> &mut E {
+        &mut self.entries[id.0].data
+    }
+
+    fn entries<'a>(&'a self) -> impl Iterator<Item = (EntryId, &'a E)>
+    where
+        E: 'a,
+    {
+        self.entries.iter().map(|(i, e)| (EntryId(i), &e.data))
+    }
+
+    fn entries_mut<'a>(&'a mut self) -> impl Iterator<Item = (EntryId, &'a mut E)>
+    where
+        E: 'a,
+    {
+        self.entries
+            .iter_mut()
+            .map(|(i, e)| (EntryId(i), &mut e.data))
+    }
+
+    fn entry_ids(&self) -> impl Iterator<Item = EntryId> {
+        self.entries.indices().map(EntryId)
     }
 
     fn keys<'a>(&'a self) -> impl Iterator<Item = &'a K>
@@ -201,10 +241,10 @@ impl<K: Hash + Eq, V> Store<K, V> for SparseStore<K, V> {
         K: 'a,
         V: 'a,
     {
-        Iter::<_, _, EntryAxis> {
+        Iter::<_, _, _, EntryAxis> {
             _marker: PhantomData,
             store: self,
-            index: self.entry_lists[id.0].first(),
+            index: self.entries[id.0].nodes.first(),
         }
         .map(|i| {
             let node = &self.nodes[i];
@@ -217,7 +257,7 @@ impl<K: Hash + Eq, V> Store<K, V> for SparseStore<K, V> {
     where
         V: 'a,
     {
-        Iter::<_, _, KeyAxis> {
+        Iter::<_, _, _, KeyAxis> {
             _marker: PhantomData,
             store: self,
             index: self.key_lists[k].first(),
@@ -229,13 +269,13 @@ impl<K: Hash + Eq, V> Store<K, V> for SparseStore<K, V> {
     }
 }
 
-struct Iter<'a, K, V, A: Axis> {
+struct Iter<'a, K, V, E, A: Axis> {
     _marker: PhantomData<A>,
-    store: &'a SparseStore<K, V>,
+    store: &'a SparseStore<K, V, E>,
     index: Option<usize>,
 }
 
-impl<'a, K, V, A: Axis> Iterator for Iter<'a, K, V, A> {
+impl<'a, K, V, E, A: Axis> Iterator for Iter<'a, K, V, E, A> {
     type Item = usize;
 
     fn next(&mut self) -> Option<Self::Item> {

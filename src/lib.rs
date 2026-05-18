@@ -21,7 +21,11 @@ pub struct EntryId(usize);
 /// of _tags_. These tags are identified by values of type `K` and hold
 /// arbitrary homogenous data of type `V`. More than one tag with the same key
 /// `K` can be associated with a single entry.
-pub trait Store<K, V> {
+///
+/// `E` represents additional data stored alongside each entry. This allows
+/// reusing the internal storage of the [`Store`] instead of using a "sidecar"
+/// `BTreeMap<EntryId, E>`.
+pub trait Store<K, V, E = ()> {
     /// Returns the number of entries in this store
     fn len(&self) -> usize;
 
@@ -29,15 +33,29 @@ pub trait Store<K, V> {
         self.len() == 0
     }
 
-    fn insert_entry(&mut self) -> EntryId;
+    fn insert_entry(&mut self, _: E) -> EntryId;
     fn insert_tag(&mut self, _: EntryId, _: K, _: V);
-    fn remove_entry(&mut self, _: EntryId);
+    fn remove_entry(&mut self, _: EntryId) -> E;
     /// Removes all tags associated with the entry. Equivalent to removing and
     /// inserting the entry, but preserves the index.
     fn clear_entry(&mut self, _: EntryId);
 
-    /// Returns an iterator over all entry IDs in this store
-    fn entries(&self) -> impl Iterator<Item = EntryId>;
+    fn entry_data(&self, _: EntryId) -> &E;
+    fn entry_data_mut(&mut self, _: EntryId) -> &mut E;
+
+    /// Returns an iterator over all entries in this store
+    fn entries<'a>(&'a self) -> impl Iterator<Item = (EntryId, &'a E)>
+    where
+        E: 'a;
+
+    /// Returns an iterator over mutable references to all entries in this store
+    fn entries_mut<'a>(&'a mut self) -> impl Iterator<Item = (EntryId, &'a mut E)>
+    where
+        E: 'a;
+
+    // NOTE: No default implementation to avoid lifetime bounds
+    /// Returns an iterator over the IDs of all entries in this store
+    fn entry_ids(&self) -> impl Iterator<Item = EntryId>;
 
     /// Returns an iterator over all unique tag keys in this store
     fn keys<'a>(&'a self) -> impl Iterator<Item = &'a K>
@@ -56,8 +74,8 @@ pub trait Store<K, V> {
     where
         V: 'a;
 
-    fn insert_entry_with(&mut self, tags: impl IntoIterator<Item = (K, V)>) -> EntryId {
-        let id = self.insert_entry();
+    fn insert_entry_with(&mut self, data: E, tags: impl IntoIterator<Item = (K, V)>) -> EntryId {
+        let id = self.insert_entry(data);
         for (k, v) in tags {
             self.insert_tag(id, k, v);
         }
@@ -69,20 +87,28 @@ pub trait Store<K, V> {
 mod tests {
     use crate::{Store, naive::NaiveStore, sparse::SparseStore};
 
-    fn test_store(mut store: impl Store<&'static str, i32>) {
-        let e1 = store.insert_entry_with([("foo", 1), ("bar", 2)]);
-        let e2 = store.insert_entry_with([("foo", 3)]);
-        let e3 = store.insert_entry_with([("foo", -1), ("bar", -2)]);
-        let e4 = store.insert_entry_with([("bar", 4)]);
+    fn test_store(mut store: impl Store<&'static str, i32, &'static str>) {
+        let e1 = store.insert_entry_with("e1", [("foo", 1), ("bar", 2)]);
+        let e2 = store.insert_entry_with("e2", [("foo", 3)]);
+        let e3 = store.insert_entry_with("e3", [("foo", -1), ("bar", -2)]);
+        let e4 = store.insert_entry_with("e4", [("bar", 4)]);
 
         assert_eq!(store.len(), 4);
 
         store.remove_entry(e3);
-        let e5 = store.insert_entry_with([("baz", 5)]);
+        let e5 = store.insert_entry_with("e5", [("baz", 5)]);
 
         assert_eq!(store.len(), 4);
 
-        assert_eq!(store.entries().collect::<Vec<_>>(), [e1, e2, e4, e5]);
+        assert_eq!(*store.entry_data(e1), "e1");
+        assert_eq!(*store.entry_data(e2), "e2");
+        assert_eq!(*store.entry_data(e4), "e4");
+        assert_eq!(*store.entry_data(e5), "e5");
+
+        assert_eq!(
+            store.entries().collect::<Vec<_>>(),
+            [(e1, &"e1"), (e2, &"e2"), (e4, &"e4"), (e5, &"e5")]
+        );
         assert_eq!(
             store.keys().copied().collect::<Vec<_>>(),
             ["foo", "bar", "baz"]
@@ -108,7 +134,7 @@ mod tests {
 
         store.remove_entry(e2);
 
-        assert_eq!(store.entries().collect::<Vec<_>>(), [e1, e4, e5]);
+        assert_eq!(store.entry_ids().collect::<Vec<_>>(), [e1, e4, e5]);
 
         store.clear_entry(e1);
 
@@ -129,10 +155,10 @@ mod tests {
     fn sparse_remove_cross_axis() {
         let mut store = SparseStore::default();
 
-        let e1 = store.insert_entry_with([("foo", 1), ("bar", 2)]);
-        let e2 = store.insert_entry_with([("foo", 3)]);
-        let e3 = store.insert_entry_with([("foo", 4), ("bar", 5)]);
-        let e4 = store.insert_entry_with([("bar", 6)]);
+        let e1 = store.insert_entry_with((), [("foo", 1), ("bar", 2)]);
+        let e2 = store.insert_entry_with((), [("foo", 3)]);
+        let e3 = store.insert_entry_with((), [("foo", 4), ("bar", 5)]);
+        let e4 = store.insert_entry_with((), [("bar", 6)]);
 
         store.remove_entry(e1);
         store.remove_entry(e2);
@@ -169,7 +195,7 @@ mod benches {
         let tag_keys: Vec<_> = (0..1000).map(|_| random_string()).collect();
 
         for _ in 0..num_entries {
-            let entry = store.insert_entry();
+            let entry = store.insert_entry(());
 
             for _ in 0..num_tags_per_entry {
                 store.insert_tag(
@@ -182,7 +208,7 @@ mod benches {
             // Remove a random entry every once in a while to simulate a more
             // realistic layout
             if rand::rng().random_bool(0.1) {
-                store.remove_entry(store.entries().choose(&mut rand::rng()).unwrap());
+                store.remove_entry(store.entry_ids().choose(&mut rand::rng()).unwrap());
             }
         }
     }
