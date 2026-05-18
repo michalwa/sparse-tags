@@ -189,7 +189,7 @@ mod benches {
     }
 
     #[bench]
-    fn naive(b: &mut Bencher) {
+    fn naive_search(b: &mut Bencher) {
         let mut store = NaiveStore::default();
         populate_store(&mut store);
 
@@ -206,8 +206,8 @@ mod benches {
     }
 
     #[bench]
-    fn sparse(b: &mut Bencher) {
-        let mut store = SparseStore::default();
+    fn sparse_search(b: &mut Bencher) {
+        let mut store = SparseStore::new();
         populate_store(&mut store);
 
         // Collect to `Vec<_>` first before `choose`-ing so as not to rely on
@@ -217,6 +217,30 @@ mod benches {
 
         b.iter(|| {
             for x in store.tags_by_key(search_tag) {
+                std::hint::black_box(x);
+            }
+        });
+    }
+
+    #[bench]
+    fn naive_iter(b: &mut Bencher) {
+        let mut store = NaiveStore::default();
+        populate_store(&mut store);
+
+        b.iter(|| {
+            for x in store.entries() {
+                std::hint::black_box(x);
+            }
+        });
+    }
+
+    #[bench]
+    fn sparse_iter(b: &mut Bencher) {
+        let mut store = SparseStore::new();
+        populate_store(&mut store);
+
+        b.iter(|| {
+            for x in store.entries() {
                 std::hint::black_box(x);
             }
         });
