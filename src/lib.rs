@@ -251,7 +251,7 @@ mod benches {
 
     #[bench]
     fn cross_linked_search(b: &mut Bencher) {
-        let mut store = CrossLinkedStore::new();
+        let mut store = CrossLinkedStore::default();
         populate_store(&mut store);
 
         let search_tag = store.keys().choose(&mut rand::rng()).unwrap();
@@ -291,7 +291,7 @@ mod benches {
 
     #[bench]
     fn cross_linked_iter(b: &mut Bencher) {
-        let mut store = CrossLinkedStore::new();
+        let mut store = CrossLinkedStore::default();
         populate_store(&mut store);
 
         b.iter(|| {
@@ -311,5 +311,38 @@ mod benches {
                 std::hint::black_box(x);
             }
         });
+    }
+
+    fn bench_insertion(b: &mut Bencher, mut store: impl Store<String, String>) {
+        let entry_ids = store.entry_ids().collect::<Vec<_>>();
+        let tag_keys = store.keys().cloned().collect::<Vec<_>>();
+
+        b.iter(|| {
+            let entry = *entry_ids.choose(&mut rand::rng()).unwrap();
+            let key = tag_keys.choose(&mut rand::rng()).unwrap().clone();
+
+            store.insert_tag(entry, key, random_string());
+        });
+    }
+
+    #[bench]
+    fn naive_insert(b: &mut Bencher) {
+        let mut store = NaiveStore::default();
+        populate_store(&mut store);
+        bench_insertion(b, store);
+    }
+
+    #[bench]
+    fn cross_linked_insert(b: &mut Bencher) {
+        let mut store = CrossLinkedStore::default();
+        populate_store(&mut store);
+        bench_insertion(b, store);
+    }
+
+    #[bench]
+    fn semi_linked_insert(b: &mut Bencher) {
+        let mut store = SemiLinkedStore::default();
+        populate_store(&mut store);
+        bench_insertion(b, store);
     }
 }
