@@ -1,20 +1,19 @@
-use std::{collections::BTreeMap, hash::Hash};
+use std::hash::Hash;
 
 use itertools::Itertools;
+use stable_vec::StableVec;
 
 use crate::{EntryId, Store};
 
-/// A naive reference implementation involving maps and linear scans, for
-/// benchmarking only
+/// A naive reference implementation linear scans, for benchmarking only
 #[derive(Default)]
 pub struct NaiveStore<K, V, E = ()> {
-    next_entry_id: usize,
-    entries: BTreeMap<usize, (E, Vec<(K, V)>)>,
+    entries: StableVec<(E, Vec<(K, V)>)>,
 }
 
 impl<K: Hash + Eq, V, E> Store<K, V, E> for NaiveStore<K, V, E> {
     fn len(&self) -> usize {
-        self.entries.len()
+        self.entries.num_elements()
     }
 
     fn is_empty(&self) -> bool {
@@ -22,30 +21,27 @@ impl<K: Hash + Eq, V, E> Store<K, V, E> for NaiveStore<K, V, E> {
     }
 
     fn insert_entry(&mut self, data: E) -> EntryId {
-        self.entries.insert(self.next_entry_id, (data, Vec::new()));
-        let id = EntryId(self.next_entry_id);
-        self.next_entry_id += 1;
-        id
+        EntryId(self.entries.push((data, Vec::new())))
     }
 
     fn insert_tag(&mut self, id: EntryId, k: K, v: V) {
-        self.entries.get_mut(&id.0).unwrap().1.push((k, v));
+        self.entries[id.0].1.push((k, v));
     }
 
     fn remove_entry(&mut self, id: EntryId) -> E {
-        self.entries.remove(&id.0).unwrap().0
+        self.entries.remove(id.0).unwrap().0
     }
 
     fn clear_entry(&mut self, id: EntryId) {
-        self.entries.get_mut(&id.0).unwrap().1.clear();
+        self.entries[id.0].1.clear();
     }
 
     fn entry_data(&self, id: EntryId) -> &E {
-        &self.entries[&id.0].0
+        &self.entries[id.0].0
     }
 
     fn entry_data_mut(&mut self, id: EntryId) -> &mut E {
-        &mut self.entries.get_mut(&id.0).unwrap().0
+        &mut self.entries[id.0].0
     }
 
     fn entries<'a>(&'a self) -> impl Iterator<Item = (EntryId, &'a E)>
@@ -54,7 +50,7 @@ impl<K: Hash + Eq, V, E> Store<K, V, E> for NaiveStore<K, V, E> {
     {
         self.entries
             .iter()
-            .map(|(id, (data, _))| (EntryId(*id), data))
+            .map(|(id, (data, _))| (EntryId(id), data))
     }
 
     fn entries_mut<'a>(&'a mut self) -> impl Iterator<Item = (EntryId, &'a mut E)>
@@ -63,11 +59,11 @@ impl<K: Hash + Eq, V, E> Store<K, V, E> for NaiveStore<K, V, E> {
     {
         self.entries
             .iter_mut()
-            .map(|(id, (data, _))| (EntryId(*id), data))
+            .map(|(id, (data, _))| (EntryId(id), data))
     }
 
     fn entry_ids(&self) -> impl Iterator<Item = EntryId> {
-        self.entries.keys().copied().map(EntryId)
+        self.entries.indices().map(EntryId)
     }
 
     fn keys<'a>(&'a self) -> impl Iterator<Item = &'a K>
@@ -85,14 +81,14 @@ impl<K: Hash + Eq, V, E> Store<K, V, E> for NaiveStore<K, V, E> {
         K: 'a,
         V: 'a,
     {
-        self.entries[&id.0].1.iter().map(|(k, v)| (k, v))
+        self.entries[id.0].1.iter().map(|(k, v)| (k, v))
     }
 
     fn tags_by_key<'a>(&'a self, key: &K) -> impl Iterator<Item = (EntryId, &'a V)>
     where
         V: 'a,
     {
-        self.entries.iter().flat_map(move |(&id, (_, ts))| {
+        self.entries.iter().flat_map(move |(id, (_, ts))| {
             ts.iter()
                 .filter(move |(k, _)| k == key)
                 .map(move |(_, v)| (EntryId(id), v))
