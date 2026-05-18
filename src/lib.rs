@@ -4,6 +4,8 @@ use std::hash::Hash;
 
 #[cfg(test)]
 mod naive;
+#[cfg(test)]
+mod semi_sparse;
 pub mod sparse;
 
 pub use sparse::SparseStore;
@@ -85,7 +87,7 @@ pub trait Store<K, V, E = ()> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Store, naive::NaiveStore, sparse::SparseStore};
+    use crate::{Store, naive::NaiveStore, semi_sparse::SemiSparseStore, sparse::SparseStore};
 
     fn test_store(mut store: impl Store<&'static str, i32, &'static str>) {
         let e1 = store.insert_entry_with("e1", [("foo", 1), ("bar", 2)]);
@@ -152,6 +154,11 @@ mod tests {
     }
 
     #[test]
+    fn semi_sparse() {
+        test_store(SemiSparseStore::default());
+    }
+
+    #[test]
     fn sparse_remove_cross_axis() {
         let mut store = SparseStore::default();
 
@@ -182,7 +189,7 @@ mod benches {
     };
     use test::Bencher;
 
-    use crate::{Store, naive::NaiveStore, sparse::SparseStore};
+    use crate::{Store, naive::NaiveStore, semi_sparse::SemiSparseStore, sparse::SparseStore};
 
     fn populate_store(store: &mut impl Store<String, String>) {
         // Optionally reduce the size of test fixtures to speed up testing
@@ -253,6 +260,20 @@ mod benches {
     }
 
     #[bench]
+    fn semi_sparse_search(b: &mut Bencher) {
+        let mut store = SemiSparseStore::default();
+        populate_store(&mut store);
+
+        let search_tag = store.keys().choose(&mut rand::rng()).unwrap();
+
+        b.iter(|| {
+            for x in store.tags_by_key(search_tag) {
+                std::hint::black_box(x);
+            }
+        });
+    }
+
+    #[bench]
     fn naive_iter(b: &mut Bencher) {
         let mut store = NaiveStore::default();
         populate_store(&mut store);
@@ -267,6 +288,18 @@ mod benches {
     #[bench]
     fn sparse_iter(b: &mut Bencher) {
         let mut store = SparseStore::new();
+        populate_store(&mut store);
+
+        b.iter(|| {
+            for x in store.entries() {
+                std::hint::black_box(x);
+            }
+        });
+    }
+
+    #[bench]
+    fn semi_sparse_iter(b: &mut Bencher) {
+        let mut store = SemiSparseStore::default();
         populate_store(&mut store);
 
         b.iter(|| {
