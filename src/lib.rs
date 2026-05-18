@@ -150,7 +150,10 @@ mod tests {
 mod benches {
     extern crate test;
 
-    use rand::{RngExt, seq::IndexedRandom};
+    use rand::{
+        RngExt,
+        seq::{IndexedRandom, IteratorRandom},
+    };
     use test::Bencher;
 
     use crate::{Store, naive::NaiveStore, sparse::SparseStore};
@@ -169,10 +172,10 @@ mod benches {
                 );
             }
 
-            // Remove 10% of entries every once in a while to simulate a more
+            // Remove a random entry every once in a while to simulate a more
             // realistic layout
             if rand::rng().random_bool(0.1) {
-                store.remove_entry(entry);
+                store.remove_entry(store.entries().choose(&mut rand::rng()).unwrap());
             }
         }
     }
@@ -193,10 +196,7 @@ mod benches {
         let mut store = NaiveStore::default();
         populate_store(&mut store);
 
-        // Collect to `Vec<_>` first before `choose`-ing so as not to rely on
-        // `size_hint` of the returned iterator
-        let tags = store.keys().collect::<Vec<_>>();
-        let search_tag = tags.choose(&mut rand::rng()).unwrap();
+        let search_tag = store.keys().choose(&mut rand::rng()).unwrap();
 
         b.iter(|| {
             for x in store.tags_by_key(search_tag) {
@@ -210,10 +210,7 @@ mod benches {
         let mut store = SparseStore::new();
         populate_store(&mut store);
 
-        // Collect to `Vec<_>` first before `choose`-ing so as not to rely on
-        // `size_hint` of the returned iterator
-        let tags = store.keys().collect::<Vec<_>>();
-        let search_tag = tags.choose(&mut rand::rng()).unwrap();
+        let search_tag = store.keys().choose(&mut rand::rng()).unwrap();
 
         b.iter(|| {
             for x in store.tags_by_key(search_tag) {
