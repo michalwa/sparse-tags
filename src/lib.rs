@@ -1,8 +1,6 @@
-#![feature(test)]
+#![cfg_attr(test, feature(test))]
 
 use std::hash::Hash;
-
-extern crate test;
 
 #[cfg(test)]
 mod naive;
@@ -150,6 +148,8 @@ mod tests {
 
 #[cfg(test)]
 mod benches {
+    extern crate test;
+
     use rand::{RngExt, seq::IndexedRandom};
     use test::Bencher;
 
