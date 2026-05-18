@@ -21,4 +21,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: cargo +nightly test
+      - run: cargo +nightly test --features lightweight-benchmarks
