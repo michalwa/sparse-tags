@@ -6,8 +6,9 @@ use stable_vec::StableVec;
 use crate::{EntryId, Store};
 
 /// Alternative implementation using a vec-of-vecs and a set of linked lists
-/// across tags only
-pub struct SemiSparseStore<K, V, E = ()> {
+/// across tags only. It seems to fare slightly worse than [`SparseStore`]
+/// in benchmarks.
+pub struct SemiLinkedStore<K, V, E = ()> {
     entries: StableVec<Entry<V, E>>,
     key_lists: IndexMap<K, TagList>,
 }
@@ -93,7 +94,7 @@ impl TagList {
     }
 }
 
-impl<K, V, E> Default for SemiSparseStore<K, V, E> {
+impl<K, V, E> Default for SemiLinkedStore<K, V, E> {
     fn default() -> Self {
         Self {
             entries: Default::default(),
@@ -102,7 +103,7 @@ impl<K, V, E> Default for SemiSparseStore<K, V, E> {
     }
 }
 
-impl<K: Hash + Eq, V, E> Store<K, V, E> for SemiSparseStore<K, V, E> {
+impl<K: Hash + Eq, V, E> Store<K, V, E> for SemiLinkedStore<K, V, E> {
     fn len(&self) -> usize {
         self.entries.num_elements()
     }
@@ -212,7 +213,7 @@ impl<K: Hash + Eq, V, E> Store<K, V, E> for SemiSparseStore<K, V, E> {
 }
 
 struct Iter<'a, K, V, E> {
-    store: &'a SemiSparseStore<K, V, E>,
+    store: &'a SemiLinkedStore<K, V, E>,
     indices: Option<(usize, usize)>,
 }
 

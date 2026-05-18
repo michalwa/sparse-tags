@@ -8,7 +8,7 @@ use crate::{EntryId, Store};
 
 /// A 2-axis doubly-linked list implementation of a [`Store`]. Refer to
 /// [`Store`] for more general documentation.
-pub struct SparseStore<K, V, E = ()> {
+pub struct CrossLinkedStore<K, V, E = ()> {
     /// Uses `StableVec` instead of `Slab` to preserve the insertion order
     entries: StableVec<Entry<E>>,
     key_lists: IndexMap<K, NodeList<KeyAxis>>,
@@ -149,7 +149,7 @@ impl NodeList<EntryAxis> {
     }
 }
 
-impl<K, V, E> Default for SparseStore<K, V, E> {
+impl<K, V, E> Default for CrossLinkedStore<K, V, E> {
     fn default() -> Self {
         Self {
             entries: StableVec::new(),
@@ -159,13 +159,13 @@ impl<K, V, E> Default for SparseStore<K, V, E> {
     }
 }
 
-impl<K, V, E> SparseStore<K, V, E> {
+impl<K, V, E> CrossLinkedStore<K, V, E> {
     pub fn new() -> Self {
         Self::default()
     }
 }
 
-impl<K: Hash + Eq, V, E> Store<K, V, E> for SparseStore<K, V, E> {
+impl<K: Hash + Eq, V, E> Store<K, V, E> for CrossLinkedStore<K, V, E> {
     fn len(&self) -> usize {
         self.entries.num_elements()
     }
@@ -271,7 +271,7 @@ impl<K: Hash + Eq, V, E> Store<K, V, E> for SparseStore<K, V, E> {
 
 struct Iter<'a, K, V, E, A: Axis> {
     _marker: PhantomData<A>,
-    store: &'a SparseStore<K, V, E>,
+    store: &'a CrossLinkedStore<K, V, E>,
     index: Option<usize>,
 }
 

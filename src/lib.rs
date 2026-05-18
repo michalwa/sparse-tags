@@ -2,13 +2,13 @@
 
 use std::hash::Hash;
 
+pub mod cross_linked;
 #[cfg(test)]
 mod naive;
 #[cfg(test)]
-mod semi_sparse;
-pub mod sparse;
+mod semi_linked;
 
-pub use sparse::SparseStore;
+pub use cross_linked::CrossLinkedStore;
 
 /// A stable index of a collection of tags in a [`Store`]. As long as an entry
 /// is not removed from a [`Store`], other insertions and removals will not
@@ -87,7 +87,9 @@ pub trait Store<K, V, E = ()> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Store, naive::NaiveStore, semi_sparse::SemiSparseStore, sparse::SparseStore};
+    use crate::{
+        Store, cross_linked::CrossLinkedStore, naive::NaiveStore, semi_linked::SemiLinkedStore,
+    };
 
     fn test_store(mut store: impl Store<&'static str, i32, &'static str>) {
         let e1 = store.insert_entry_with("e1", [("foo", 1), ("bar", 2)]);
@@ -149,18 +151,18 @@ mod tests {
     }
 
     #[test]
-    fn sparse() {
-        test_store(SparseStore::default());
+    fn cross_linked() {
+        test_store(CrossLinkedStore::default());
     }
 
     #[test]
-    fn semi_sparse() {
-        test_store(SemiSparseStore::default());
+    fn semi_linked() {
+        test_store(SemiLinkedStore::default());
     }
 
     #[test]
-    fn sparse_remove_cross_axis() {
-        let mut store = SparseStore::default();
+    fn cross_linked_remove_cross_axis() {
+        let mut store = CrossLinkedStore::default();
 
         let e1 = store.insert_entry_with((), [("foo", 1), ("bar", 2)]);
         let e2 = store.insert_entry_with((), [("foo", 3)]);
@@ -189,7 +191,9 @@ mod benches {
     };
     use test::Bencher;
 
-    use crate::{Store, naive::NaiveStore, semi_sparse::SemiSparseStore, sparse::SparseStore};
+    use crate::{
+        Store, cross_linked::CrossLinkedStore, naive::NaiveStore, semi_linked::SemiLinkedStore,
+    };
 
     fn populate_store(store: &mut impl Store<String, String>) {
         // Optionally reduce the size of test fixtures to speed up testing
@@ -246,8 +250,8 @@ mod benches {
     }
 
     #[bench]
-    fn sparse_search(b: &mut Bencher) {
-        let mut store = SparseStore::new();
+    fn cross_linked_search(b: &mut Bencher) {
+        let mut store = CrossLinkedStore::new();
         populate_store(&mut store);
 
         let search_tag = store.keys().choose(&mut rand::rng()).unwrap();
@@ -260,8 +264,8 @@ mod benches {
     }
 
     #[bench]
-    fn semi_sparse_search(b: &mut Bencher) {
-        let mut store = SemiSparseStore::default();
+    fn semi_linked_search(b: &mut Bencher) {
+        let mut store = SemiLinkedStore::default();
         populate_store(&mut store);
 
         let search_tag = store.keys().choose(&mut rand::rng()).unwrap();
@@ -286,8 +290,8 @@ mod benches {
     }
 
     #[bench]
-    fn sparse_iter(b: &mut Bencher) {
-        let mut store = SparseStore::new();
+    fn cross_linked_iter(b: &mut Bencher) {
+        let mut store = CrossLinkedStore::new();
         populate_store(&mut store);
 
         b.iter(|| {
@@ -298,8 +302,8 @@ mod benches {
     }
 
     #[bench]
-    fn semi_sparse_iter(b: &mut Bencher) {
-        let mut store = SemiSparseStore::default();
+    fn semi_linked_iter(b: &mut Bencher) {
+        let mut store = SemiLinkedStore::default();
         populate_store(&mut store);
 
         b.iter(|| {
