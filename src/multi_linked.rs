@@ -242,6 +242,28 @@ impl<K: Hash + Eq, V, E> Store<K, V, E> for MultiLinkedStore<K, V, E> {
         self.key_lists.keys()
     }
 
+    fn tags<'a>(&'a self) -> impl Iterator<Item = (EntryId, &'a K, &'a V)>
+    where
+        K: 'a,
+        V: 'a,
+    {
+        self.nodes.iter().map(|(_, node)| {
+            let (key, _) = self.key_lists.get_index(node.key_index).unwrap();
+            (node.entry, key, &node.value)
+        })
+    }
+
+    fn tags_mut<'a>(&'a mut self) -> impl Iterator<Item = (EntryId, &'a K, &'a mut V)>
+    where
+        K: 'a,
+        V: 'a,
+    {
+        self.nodes.iter_mut().map(|(_, node)| {
+            let (key, _) = self.key_lists.get_index(node.key_index).unwrap();
+            (node.entry, key, &mut node.value)
+        })
+    }
+
     fn tags_by_entry<'a>(&'a self, id: EntryId) -> impl Iterator<Item = (&'a K, &'a V)>
     where
         K: 'a,

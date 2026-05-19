@@ -66,6 +66,18 @@ pub trait Store<K, V, E = ()> {
     where
         K: 'a;
 
+    /// Returns an iterator over all tags in the store
+    fn tags<'a>(&'a self) -> impl Iterator<Item = (EntryId, &'a K, &'a V)>
+    where
+        K: 'a,
+        V: 'a;
+
+    /// Returns an iterator over mutable references to all tags in the store
+    fn tags_mut<'a>(&'a mut self) -> impl Iterator<Item = (EntryId, &'a K, &'a mut V)>
+    where
+        K: 'a,
+        V: 'a;
+
     /// Returns an iterator over tags associated with an entry
     fn tags_by_entry<'a>(&'a self, _: EntryId) -> impl Iterator<Item = (&'a K, &'a V)>
     where
@@ -89,6 +101,8 @@ pub trait Store<K, V, E = ()> {
 
 #[cfg(test)]
 mod tests {
+    use itertools::Itertools;
+
     use crate::{Store, indexed::IndexedStore, multi_linked::MultiLinkedStore, naive::NaiveStore};
 
     fn test_store(mut store: impl Store<&'static str, i32, &'static str>) {
@@ -116,6 +130,20 @@ mod tests {
         assert_eq!(
             store.keys().copied().collect::<Vec<_>>(),
             ["foo", "bar", "baz"]
+        );
+        assert_eq!(
+            // Order is not guaranteed
+            store.tags().sorted().collect::<Vec<_>>(),
+            [
+                (e1, &"foo", &1),
+                (e1, &"bar", &2),
+                (e2, &"foo", &3),
+                (e4, &"bar", &4),
+                (e5, &"baz", &5),
+            ]
+            .into_iter()
+            .sorted()
+            .collect::<Vec<_>>(),
         );
 
         assert_eq!(

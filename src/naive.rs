@@ -76,6 +76,26 @@ impl<K: Hash + Eq, V, E> Store<K, V, E> for NaiveStore<K, V, E> {
             .unique()
     }
 
+    fn tags<'a>(&'a self) -> impl Iterator<Item = (EntryId, &'a K, &'a V)>
+    where
+        K: 'a,
+        V: 'a,
+    {
+        self.entries
+            .iter()
+            .flat_map(|(id, entry)| entry.1.iter().map(move |(k, v)| (EntryId(id), k, v)))
+    }
+
+    fn tags_mut<'a>(&'a mut self) -> impl Iterator<Item = (EntryId, &'a K, &'a mut V)>
+    where
+        K: 'a,
+        V: 'a,
+    {
+        self.entries
+            .iter_mut()
+            .flat_map(|(id, entry)| entry.1.iter_mut().map(move |(k, v)| (EntryId(id), &*k, v)))
+    }
+
     fn tags_by_entry<'a>(&'a self, id: EntryId) -> impl Iterator<Item = (&'a K, &'a V)>
     where
         K: 'a,

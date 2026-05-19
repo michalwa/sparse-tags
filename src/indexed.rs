@@ -134,6 +134,33 @@ impl<K: Hash + Eq, V, E> Store<K, V, E> for IndexedStore<K, V, E> {
         self.key_indices.keys()
     }
 
+    fn tags<'a>(&'a self) -> impl Iterator<Item = (EntryId, &'a K, &'a V)>
+    where
+        K: 'a,
+        V: 'a,
+    {
+        self.entries.iter().flat_map(move |(id, entry)| {
+            entry.tags.iter().map(move |tag| {
+                let (key, _) = self.key_indices.get_index(tag.key_index).unwrap();
+                (EntryId(id), key, &tag.value)
+            })
+        })
+    }
+
+    fn tags_mut<'a>(&'a mut self) -> impl Iterator<Item = (EntryId, &'a K, &'a mut V)>
+    where
+        K: 'a,
+        V: 'a,
+    {
+        self.entries.iter_mut().flat_map(|(id, entry)| {
+            let key_indices = &self.key_indices;
+            entry.tags.iter_mut().map(move |tag| {
+                let (key, _) = key_indices.get_index(tag.key_index).unwrap();
+                (EntryId(id), key, &mut tag.value)
+            })
+        })
+    }
+
     fn tags_by_entry<'a>(&'a self, id: EntryId) -> impl Iterator<Item = (&'a K, &'a V)>
     where
         K: 'a,
