@@ -8,18 +8,18 @@ use crate::{EntryId, Store};
 
 /// A multi-linked list implementation of a [`Store`]
 ///
+/// Fares significantly worse than [`IndexedStore`], especially in search, but
+/// kept for reference and because it's cool-looking (:
+///
 /// Internally represented as a graph of nodes, each of which represents an
 /// instance of a tag associated with an entry, and stores double-linked
 /// pointers in 2 axes: the entry chain and tag chain. The entry chain connects
 /// nodes which share the same [`EntryId`] and the tag chains (one for each key
 /// `K`) connect nodes with the same tag key `K`.
 ///
-/// * [`Store::insert_entry()`] and [`Store::insert_tag()`] are `O(1)`.
-/// * [`Store::remove_entry()`] and [`Store::clear_entry()`] are `O(n)` where
-///   `n` is the number of tags present on the entry.
-/// * Iterating [`Store::tags_by_entry()`] and [`Store::tags_by_key()`] is
-///   `O(n)` where `n` is the number of entries or tags, respectively, matching
-///   the predicate.
+/// This implementation effectively has the same time complexities as
+/// [`IndexedStore`] and my guess for why it ends up doing worse is worse cache
+/// locality.
 pub struct MultiLinkedStore<K, V, E = ()> {
     /// Uses `StableVec` instead of `Slab` to preserve the insertion order
     entries: StableVec<Entry<E>>,
@@ -168,12 +168,6 @@ impl<K, V, E> Default for MultiLinkedStore<K, V, E> {
             key_lists: IndexMap::new(),
             nodes: Slab::new(),
         }
-    }
-}
-
-impl<K, V, E> MultiLinkedStore<K, V, E> {
-    pub fn new() -> Self {
-        Self::default()
     }
 }
 

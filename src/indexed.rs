@@ -5,7 +5,14 @@ use stable_vec::StableVec;
 
 use crate::{EntryId, Store};
 
-/// Alternative implementation using a vec-of-vecs and a map of index lists
+/// Implementation of a [`Store`] using a vec-of-vecs and a map of index lists
+/// for each key
+///
+/// * [`Store::insert_entry()`] and [`Store::insert_tag()`] are `O(1)`.
+/// * [`Store::remove_entry()`] and [`Store::clear_entry()`] are linear in the
+///   number of tags present on the entry.
+/// * Iterating [`Store::tags_by_entry()`] and [`Store::tags_by_key()`] is
+///   linear in the number of entries or tags, respectively, matching the predicate.
 pub struct IndexedStore<K, V, E = ()> {
     entries: StableVec<Entry<V, E>>,
     key_indices: IndexMap<K, StableVec<Index>>,
@@ -27,7 +34,7 @@ struct Tag<V> {
     value: V,
     /// Index into `IndexedStore.key_indices`
     key_index: usize,
-    /// Index into `IndexedStore.key_indices.get_index(key_index)`
+    /// Index into `IndexedStore.key_indices.get_index(key_index)` for fast removal
     index_index: usize,
 }
 
@@ -37,6 +44,12 @@ impl<K, V, E> Default for IndexedStore<K, V, E> {
             entries: Default::default(),
             key_indices: Default::default(),
         }
+    }
+}
+
+impl<K, V, E> IndexedStore<K, V, E> {
+    pub fn new() -> Self {
+        Default::default()
     }
 }
 

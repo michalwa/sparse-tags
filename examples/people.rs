@@ -1,7 +1,7 @@
-use sparse_tags::{MultiLinkedStore, Store};
+use sparse_tags::{IndexedStore, Store};
 
 fn main() {
-    let mut store = MultiLinkedStore::new();
+    let mut store = IndexedStore::new();
 
     let john = store.insert_entry_with(
         1,

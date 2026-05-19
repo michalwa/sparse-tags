@@ -2,13 +2,13 @@
 
 use std::hash::Hash;
 
+pub mod indexed;
 #[cfg(test)]
-mod indexed;
-pub mod multi_linked;
+mod multi_linked;
 #[cfg(test)]
 mod naive;
 
-pub use multi_linked::MultiLinkedStore;
+pub use indexed::IndexedStore;
 
 /// A stable index of a collection of tags in a [`Store`]. As long as an entry
 /// is not removed from a [`Store`], other insertions and removals will not

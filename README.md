@@ -1,10 +1,10 @@
 # sparse-tags
 
-An ECS-like sparse data structure used to store and efficiently iterate over sets of key-value pairs, implemented as a multi-linked list in Rust.
+A set of alternative implementations and benchmarks for an ECS-like data structure used to store and efficiently iterate over sets of key-value pairs, written in Rust.
 
-Developed to serve as a search cache for [factbook](https://github.com/michalwa/factbook).
+Developed to find a solution for a search cache for [factbook](https://github.com/michalwa/factbook).
 
-## Architecture
+## Design
 
 ### Definitions
 
@@ -16,11 +16,42 @@ Unlike in traditional ECS architecture, multiple tags within an entry may share 
 
 Tag keys and values are currently modelled to be homogenous, so implementing an actual ECS using this crate will not provide adequate compile-time guarantees. Though a future extension to support a functionality similar to [`typemap`](https://github.com/reem/rust-typemap) is possible.
 
-The word _sparse_ is used to mean that not all entries necessarily contain tags of all unique keys, and also that the implementation resembles that of a [multi-linked list sparse matrix](https://webdocs.cs.ualberta.ca/~holte/T26/mlinked-lists.html).
+The word _sparse_ is used to mean that not all entries necessarily contain tags of all unique keys, and also that the most interesting, though suboptimal, implementation resembles that of a [multi-linked list sparse matrix](https://webdocs.cs.ualberta.ca/~holte/T26/mlinked-lists.html).
 
-### Implementation
+### Naive implementation
 
-The main implementation [`MultiLinkedStore`](src/multi_linked.rs) is internally represented as a graph of nodes, each of which represents an instance of a tag associated with an entry, and stores the tag value as well as double-linked pointers in 2 axes: the entry chain and key chain. The entry list connects nodes which share the same `EntryId` and the key lists (one for each key `K`) connect nodes with the same tag key. These lists then allow fast traversal.
+[`NaiveStore`](src/naive.rs) is arguably an overly naive implementation, which simply stores entries as `Vec`s of `(K, V)` pairs, and performs linear scans on each of those `Vec`s on search. Unsurprisingly, it is the worst performer in the case of search.
+
+### Indexed vec-of-vecs implementation
+
+[`IndexedStore`](src/indexed.rs) is a less naive, but still straightforward implementation, and ends up performing the best. It is essentially an extension of the first naive implementation, adding a map of index lists `Map<K, Vec<(usize, usize)>>`. This allows search by tag to simply iterate the respective list of indices. Additionally, to speed up removals (avoid having to scan the index list) tags stored inside entry also hold indices into the index list.
+
+```
+      ┌────────────────────────────┐                        
+┌─────┼────────────────┐   ┌───────┼───────────────────────┐
+│   ┌─▼────────┐       │   │   ┌───▼─────────────────────┐ │
+│ 1 │ A1 B1 D1 │       │   │ A │ (0,0) (2,0) (3,0) (4,0) │ │
+│   └──────────┘       │   │   └─────────────────────────┘ │
+│   ┌───────┐          │   │   ┌─────────────────────────┐ │
+│ 2 │ B2 C2 │          │   │ B │ (0,1) (1,0) (2,1) (3,1) │ │
+│   └───────┘          │   │   └─────────────────────────┘ │
+│   ┌───────┐          │   │   ┌───────────────────┐       │
+│ 3 │ A3 B3 │          │   │ C │ (1,1) (3,2) (4,1) │       │
+│   └───────┘          │   │   └───────────────────┘       │
+│   ┌────────────────┐ │   │   ┌─────────────┐             │
+│ 4 │ A4 B4 C4 D4 E4 │ │   │ D │ (0,2) (3,3) │             │
+│   └────────────────┘ │   │   └─────────────┘             │
+│   ┌──────────┐       │   │   ┌─────────────┐             │
+│ 5 │ A5 C5 E5 │       │   │ E │ (3,4) (4,2) │             │
+│   └──────────┘       │   │   └─────────────┘             │
+└─entries──────────────┘   └─key_indices───────────────────┘
+```
+
+### Multi-linked list implementation
+
+[`MultiLinkedStore`](src/multi_linked.rs) was initially the primary focus of this crate, because to an untrained eye it felt like a good candidate for the most optimal solution. In the end I think it's at least interesting enough to keep around.
+
+The implementation is internally represented as a graph of nodes, each of which represents an instance of a tag associated with an entry, and stores the tag value as well as double-linked pointers in 2 axes: the entry chain and key chain. The entry list connects nodes which share the same `EntryId` and the key lists (one for each key `K`) connect nodes with the same tag key. These lists then allow fast traversal.
 
 Each node also stores the `EntryId` and a reference to the key to allow fast access during iteration without needing to iterate the respective lists.
 
@@ -62,6 +93,6 @@ _A representation of a `MultiLinkedStore` populated with example data. In this c
 This achieves the following:
 
 - `insert_entry` and `insert_tag` are `O(1)`.
-- Iterating `tags_by_entry` and `tags_by_key` is linear in the number of entries or tags, respectively, matching the predicate. No unnecessary nodes are traversed during a search.
+- Iterating `tags_by_entry` and `tags_by_key` is linear in the number of entries or tags, respectively, matching the predicate.
 
 The downside is that `remove_entry` and `clear_entry` are linear in the number of tags present on the entry, because all neighboring tag nodes need to be re-linked. Based on the intended use case it is assumed that realistically there will be significantly more entries than keys, and that this is therefore the right tradeoff.
