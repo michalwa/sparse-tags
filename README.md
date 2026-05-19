@@ -1,6 +1,6 @@
 # sparse-tags
 
-A set of alternative implementations and benchmarks for an ECS-like data structure used to store and efficiently iterate over sets of key-value pairs, written in Rust.
+A study and benchmark of alternative implementations for an ECS-like data structure used to store and efficiently iterate over sets of key-value pairs in Rust.
 
 Developed to find a solution for a search cache for [factbook](https://github.com/michalwa/factbook).
 
@@ -63,7 +63,7 @@ The implementation is internally represented as a graph of nodes, each of which 
 
 Each node also stores the `EntryId` and a reference to the key to allow fast access during iteration without needing to iterate the respective lists.
 
-Predecessor and end pointers allow inserting to the back of the lists instead of to the front to roughly preserve insertion order, though no concrete guarantees were taken into consideration.
+Predecessor and end pointers allow inserting to the back of the lists instead of to the front to preserve insertion order, though no concrete guarantees were taken into consideration.
 
 ```
                        keys
