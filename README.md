@@ -24,7 +24,7 @@ The word _sparse_ is used to mean that not all entries necessarily contain tags 
 
 [`NaiveStore`](src/naive.rs) is arguably an unfairly naive implementation, which simply stores entries as `Vec`s of `(K, V)` pairs, and performs linear scans on each of those `Vec`s on search. Unsurprisingly, it is the worst performer in the case of search.
 
-### Indexed vec-of-vecs implementation
+### Indexed linear implementation
 
 [`IndexedStore`](src/indexed.rs) is a less naive, but still straightforward implementation, and ends up performing the best. It is essentially an extension of the first naive implementation, adding a map of index lists `Map<K, Vec<(usize, usize)>>`. This allows search by tag to simply iterate the respective list of indices. Additionally, to speed up removals (avoid having to scan the index list) tags stored inside entry also hold indices into the index list.
 
@@ -98,4 +98,4 @@ entries   │      │      │      │      │
 
 In the example case above each tag key has a unique key within an entry, but this is not enforced. In the case of duplicate keys, the links between nodes would be "parallel" to the ones in the entry list.
 
-This implementation seemingly has the same time complexities as the [indexed vec-of-vecs](#indexed-vec-of-vecs-implementation). Heap usage is also comparable. My best guess for why it ends up doing worse in time benchmarks is worse cache locality.
+This implementation seemingly has the same time complexities as the [indexed linear](#indexed-linear-implementation). Heap usage is also comparable. My best guess for why it ends up doing worse in time benchmarks is worse cache locality.

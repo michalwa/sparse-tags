@@ -5,7 +5,7 @@ use stable_vec::StableVec;
 
 use crate::{EntryId, Store};
 
-/// A naive reference implementation linear scans, for benchmarking only
+/// A naive reference implementation using linear scans, for benchmarking only
 #[derive(Default)]
 pub struct NaiveStore<K, V, E = ()> {
     entries: StableVec<(E, Vec<(K, V)>)>,
