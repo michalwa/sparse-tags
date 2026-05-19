@@ -322,46 +322,9 @@ mod benches {
         bench_insertion(b, store);
     }
 
-    fn bench_removal(b: &mut Bencher, mut store: impl Store<String, String>) {
-        let mut entry_ids = store.entry_ids().collect::<Vec<_>>();
-
-        b.iter(|| {
-            // FIXME: This should not be part of the benchmark, but I don't know
-            // how to otherwise ensure there are always entries to remove
-            if entry_ids.is_empty() {
-                populate_store(&mut store);
-                entry_ids = store.entry_ids().collect::<Vec<_>>();
-            }
-
-            let (i, &entry) = entry_ids
-                .iter()
-                .enumerate()
-                .choose(&mut rand::rng())
-                .unwrap();
-
-            store.remove_entry(entry);
-            entry_ids.swap_remove(i);
-        });
-    }
-
-    #[bench]
-    fn naive_remove(b: &mut Bencher) {
-        let mut store = NaiveStore::default();
-        populate_store(&mut store);
-        bench_removal(b, store);
-    }
-
-    #[bench]
-    fn multi_linked_remove(b: &mut Bencher) {
-        let mut store = MultiLinkedStore::default();
-        populate_store(&mut store);
-        bench_removal(b, store);
-    }
-
-    #[bench]
-    fn indexed_remove(b: &mut Bencher) {
-        let mut store = IndexedStore::default();
-        populate_store(&mut store);
-        bench_removal(b, store);
-    }
+    // NOTE: Entry removal benchmark omitted, because not knowing the number of
+    // iterations, it requires checking whether the store has been emptied and
+    // repopulating it within the benchmark closure, which obviously influences
+    // the results; or pairing the removal with an insertion, which defeats the
+    // point.
 }
