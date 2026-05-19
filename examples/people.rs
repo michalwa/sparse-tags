@@ -1,7 +1,7 @@
-use sparse_tags::{CrossLinkedStore, Store};
+use sparse_tags::{MultiLinkedStore, Store};
 
 fn main() {
-    let mut store = CrossLinkedStore::new();
+    let mut store = MultiLinkedStore::new();
 
     let john = store.insert_entry_with(
         1,

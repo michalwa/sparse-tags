@@ -2,13 +2,13 @@
 
 use std::hash::Hash;
 
-pub mod cross_linked;
+pub mod multi_linked;
 #[cfg(test)]
 mod naive;
 #[cfg(test)]
 mod semi_linked;
 
-pub use cross_linked::CrossLinkedStore;
+pub use multi_linked::MultiLinkedStore;
 
 /// A stable index of a collection of tags in a [`Store`]. As long as an entry
 /// is not removed from a [`Store`], other insertions and removals will not
@@ -88,7 +88,7 @@ pub trait Store<K, V, E = ()> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        Store, cross_linked::CrossLinkedStore, naive::NaiveStore, semi_linked::SemiLinkedStore,
+        Store, multi_linked::MultiLinkedStore, naive::NaiveStore, semi_linked::SemiLinkedStore,
     };
 
     fn test_store(mut store: impl Store<&'static str, i32, &'static str>) {
@@ -151,33 +151,13 @@ mod tests {
     }
 
     #[test]
-    fn cross_linked() {
-        test_store(CrossLinkedStore::default());
+    fn multi_linked() {
+        test_store(MultiLinkedStore::default());
     }
 
     #[test]
     fn semi_linked() {
         test_store(SemiLinkedStore::default());
-    }
-
-    #[test]
-    fn cross_linked_remove_cross_axis() {
-        let mut store = CrossLinkedStore::default();
-
-        let e1 = store.insert_entry_with((), [("foo", 1), ("bar", 2)]);
-        let e2 = store.insert_entry_with((), [("foo", 3)]);
-        let e3 = store.insert_entry_with((), [("foo", 4), ("bar", 5)]);
-        let e4 = store.insert_entry_with((), [("bar", 6)]);
-
-        store.remove_entry(e1);
-        store.remove_entry(e2);
-        store.remove_entry(e4);
-
-        assert_eq!(
-            store.tags_by_entry(e3).collect::<Vec<_>>(),
-            [(&"foo", &4), (&"bar", &5)]
-        );
-        assert_eq!(store.tags_by_key(&"foo").collect::<Vec<_>>(), [(e3, &4)]);
     }
 }
 
@@ -192,7 +172,7 @@ mod benches {
     use test::Bencher;
 
     use crate::{
-        Store, cross_linked::CrossLinkedStore, naive::NaiveStore, semi_linked::SemiLinkedStore,
+        Store, multi_linked::MultiLinkedStore, naive::NaiveStore, semi_linked::SemiLinkedStore,
     };
 
     fn populate_store(store: &mut impl Store<String, String>) {
@@ -250,8 +230,8 @@ mod benches {
     }
 
     #[bench]
-    fn cross_linked_search(b: &mut Bencher) {
-        let mut store = CrossLinkedStore::default();
+    fn multi_linked_search(b: &mut Bencher) {
+        let mut store = MultiLinkedStore::default();
         populate_store(&mut store);
 
         let search_tag = store.keys().choose(&mut rand::rng()).unwrap();
@@ -290,8 +270,8 @@ mod benches {
     }
 
     #[bench]
-    fn cross_linked_iter(b: &mut Bencher) {
-        let mut store = CrossLinkedStore::default();
+    fn multi_linked_iter(b: &mut Bencher) {
+        let mut store = MultiLinkedStore::default();
         populate_store(&mut store);
 
         b.iter(|| {
@@ -333,8 +313,8 @@ mod benches {
     }
 
     #[bench]
-    fn cross_linked_insert(b: &mut Bencher) {
-        let mut store = CrossLinkedStore::default();
+    fn multi_linked_insert(b: &mut Bencher) {
+        let mut store = MultiLinkedStore::default();
         populate_store(&mut store);
         bench_insertion(b, store);
     }
@@ -376,8 +356,8 @@ mod benches {
     }
 
     #[bench]
-    fn cross_linked_remove(b: &mut Bencher) {
-        let mut store = CrossLinkedStore::default();
+    fn multi_linked_remove(b: &mut Bencher) {
+        let mut store = MultiLinkedStore::default();
         populate_store(&mut store);
         bench_removal(b, store);
     }
