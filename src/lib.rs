@@ -2,11 +2,11 @@
 
 use std::hash::Hash;
 
+#[cfg(test)]
+mod indexed;
 pub mod multi_linked;
 #[cfg(test)]
 mod naive;
-#[cfg(test)]
-mod semi_linked;
 
 pub use multi_linked::MultiLinkedStore;
 
@@ -87,9 +87,7 @@ pub trait Store<K, V, E = ()> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        Store, multi_linked::MultiLinkedStore, naive::NaiveStore, semi_linked::SemiLinkedStore,
-    };
+    use crate::{Store, indexed::IndexedStore, multi_linked::MultiLinkedStore, naive::NaiveStore};
 
     fn test_store(mut store: impl Store<&'static str, i32, &'static str>) {
         let e1 = store.insert_entry_with("e1", [("foo", 1), ("bar", 2)]);
@@ -156,8 +154,8 @@ mod tests {
     }
 
     #[test]
-    fn semi_linked() {
-        test_store(SemiLinkedStore::default());
+    fn indexed() {
+        test_store(IndexedStore::default());
     }
 }
 
@@ -171,9 +169,7 @@ mod benches {
     };
     use test::Bencher;
 
-    use crate::{
-        Store, multi_linked::MultiLinkedStore, naive::NaiveStore, semi_linked::SemiLinkedStore,
-    };
+    use crate::{Store, indexed::IndexedStore, multi_linked::MultiLinkedStore, naive::NaiveStore};
 
     fn populate_store(store: &mut impl Store<String, String>) {
         // Optionally reduce the size of test fixtures to speed up testing
@@ -244,8 +240,8 @@ mod benches {
     }
 
     #[bench]
-    fn semi_linked_search(b: &mut Bencher) {
-        let mut store = SemiLinkedStore::default();
+    fn indexed_search(b: &mut Bencher) {
+        let mut store = IndexedStore::default();
         populate_store(&mut store);
 
         let search_tag = store.keys().choose(&mut rand::rng()).unwrap();
@@ -282,8 +278,8 @@ mod benches {
     }
 
     #[bench]
-    fn semi_linked_iter(b: &mut Bencher) {
-        let mut store = SemiLinkedStore::default();
+    fn indexed_iter(b: &mut Bencher) {
+        let mut store = IndexedStore::default();
         populate_store(&mut store);
 
         b.iter(|| {
@@ -320,8 +316,8 @@ mod benches {
     }
 
     #[bench]
-    fn semi_linked_insert(b: &mut Bencher) {
-        let mut store = SemiLinkedStore::default();
+    fn indexed_insert(b: &mut Bencher) {
+        let mut store = IndexedStore::default();
         populate_store(&mut store);
         bench_insertion(b, store);
     }
@@ -363,8 +359,8 @@ mod benches {
     }
 
     #[bench]
-    fn semi_linked_remove(b: &mut Bencher) {
-        let mut store = SemiLinkedStore::default();
+    fn indexed_remove(b: &mut Bencher) {
+        let mut store = IndexedStore::default();
         populate_store(&mut store);
         bench_removal(b, store);
     }
