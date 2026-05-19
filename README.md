@@ -18,9 +18,9 @@ Tag keys and values are currently modelled to be homogenous, so implementing an 
 
 The word _sparse_ is used to mean that not all entries necessarily contain tags of all unique keys, and also that the most interesting, though suboptimal, implementation resembles that of a [multi-linked list sparse matrix](https://webdocs.cs.ualberta.ca/~holte/T26/mlinked-lists.html).
 
-### Naive implementation
+### Naive linear implementation
 
-[`NaiveStore`](src/naive.rs) is arguably an overly naive implementation, which simply stores entries as `Vec`s of `(K, V)` pairs, and performs linear scans on each of those `Vec`s on search. Unsurprisingly, it is the worst performer in the case of search.
+[`NaiveStore`](src/naive.rs) is arguably an unfairly naive implementation, which simply stores entries as `Vec`s of `(K, V)` pairs, and performs linear scans on each of those `Vec`s on search. Unsurprisingly, it is the worst performer in the case of search.
 
 ### Indexed vec-of-vecs implementation
 
@@ -47,9 +47,13 @@ The word _sparse_ is used to mean that not all entries necessarily contain tags 
 └─entries──────────────┘   └─key_indices───────────────────┘
 ```
 
+`insert_entry` and `insert_tag` are `O(1)`.
+
+The downside is that `remove_entry` and `clear_entry` are linear in the number of tags present on the entry, because the index lists need to be updated. Based on the intended use case it is assumed that realistically there will be significantly more entries than keys, and that this is therefore the right tradeoff.
+
 ### Multi-linked list implementation
 
-[`MultiLinkedStore`](src/multi_linked.rs) was initially the primary focus of this crate, because to an untrained eye it felt like a good candidate for the most optimal solution. In the end I think it's at least interesting enough to keep around.
+[`MultiLinkedStore`](src/multi_linked.rs) was initially the primary focus of this crate, because to an untrained overengineering eye it felt like a good candidate for the most optimal solution. In the end I think it's interesting enough to keep around and serves as a reminder that simple solutions usually prove superior.
 
 The implementation is internally represented as a graph of nodes, each of which represents an instance of a tag associated with an entry, and stores the tag value as well as double-linked pointers in 2 axes: the entry chain and key chain. The entry list connects nodes which share the same `EntryId` and the key lists (one for each key `K`) connect nodes with the same tag key. These lists then allow fast traversal.
 
@@ -88,11 +92,6 @@ entries   │      │      │      │      │
         └───────────────────────────────┘
 ```
 
-_A representation of a `MultiLinkedStore` populated with example data. In this case each tag key has a unique key within an entry, but this is not enforced. In the case of duplicate keys, the links between nodes would be "parallel" to the ones in the entry list._
+In the example case above each tag key has a unique key within an entry, but this is not enforced. In the case of duplicate keys, the links between nodes would be "parallel" to the ones in the entry list.
 
-This achieves the following:
-
-- `insert_entry` and `insert_tag` are `O(1)`.
-- Iterating `tags_by_entry` and `tags_by_key` is linear in the number of entries or tags, respectively, matching the predicate.
-
-The downside is that `remove_entry` and `clear_entry` are linear in the number of tags present on the entry, because all neighboring tag nodes need to be re-linked. Based on the intended use case it is assumed that realistically there will be significantly more entries than keys, and that this is therefore the right tradeoff.
+This implementation seemingly has the same time complexities as the [indexed vec-of-vecs](#indexed-vec-of-vecs). Heap usage is also comparable. My best guess for why it ends up doing worse in time benchmarks is worse cache locality.
