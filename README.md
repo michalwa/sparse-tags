@@ -18,6 +18,8 @@ Tag keys and values are currently modelled to be homogenous, so implementing an 
 
 The word _sparse_ is used to mean that not all entries necessarily contain tags of all unique keys, and also that the most interesting, though suboptimal, implementation resembles that of a [multi-linked list sparse matrix](https://webdocs.cs.ualberta.ca/~holte/T26/mlinked-lists.html).
 
+## Implementation
+
 ### Naive linear implementation
 
 [`NaiveStore`](src/naive.rs) is arguably an unfairly naive implementation, which simply stores entries as `Vec`s of `(K, V)` pairs, and performs linear scans on each of those `Vec`s on search. Unsurprisingly, it is the worst performer in the case of search.
@@ -47,6 +49,8 @@ The word _sparse_ is used to mean that not all entries necessarily contain tags 
 └─entries──────────────┘   └─key_indices───────────────────┘
 ```
 
+_(other links hidden for clarity)_
+
 `insert_entry` and `insert_tag` are `O(1)`.
 
 The downside is that `remove_entry` and `clear_entry` are linear in the number of tags present on the entry, because the index lists need to be updated. Based on the intended use case it is assumed that realistically there will be significantly more entries than keys, and that this is therefore the right tradeoff.
@@ -59,7 +63,7 @@ The implementation is internally represented as a graph of nodes, each of which 
 
 Each node also stores the `EntryId` and a reference to the key to allow fast access during iteration without needing to iterate the respective lists.
 
-Predecessor and end pointers allow inserting to the back of the lists instead of to the front to roughly preserve insertion order, though no guarantees about this are made and it is subject to change in future versions.
+Predecessor and end pointers allow inserting to the back of the lists instead of to the front to roughly preserve insertion order, though no concrete guarantees were taken into consideration.
 
 ```
                        keys
@@ -94,4 +98,4 @@ entries   │      │      │      │      │
 
 In the example case above each tag key has a unique key within an entry, but this is not enforced. In the case of duplicate keys, the links between nodes would be "parallel" to the ones in the entry list.
 
-This implementation seemingly has the same time complexities as the [indexed vec-of-vecs](#indexed-vec-of-vecs). Heap usage is also comparable. My best guess for why it ends up doing worse in time benchmarks is worse cache locality.
+This implementation seemingly has the same time complexities as the [indexed vec-of-vecs](#indexed-vec-of-vecs-implementation). Heap usage is also comparable. My best guess for why it ends up doing worse in time benchmarks is worse cache locality.
