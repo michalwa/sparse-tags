@@ -5,13 +5,16 @@ edition = "2024"
 
 [features]
 lightweight-benchmarks = []
+serde = ["dep:serde"]
 
 [dev-dependencies]
 itertools = "0.14.0"
 rand = "0.10.1"
+serde_json = "1.0.149"
 
 [dependencies]
 indexmap = "2.14.0"
+serde = { version = "1.0.228", features = ["derive"], optional = true }
 slab = "0.4.12"
 stable-vec = "0.4.2"
 typed-arena = "2.0.2"

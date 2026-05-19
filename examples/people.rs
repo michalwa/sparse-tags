@@ -40,4 +40,10 @@ fn main() {
             println!("{first_name} (no known last name)");
         }
     }
+
+    #[cfg(feature = "serde")]
+    {
+        let serialized_ids = serde_json::to_string(&store.entry_ids().collect::<Vec<_>>()).unwrap();
+        println!("{serialized_ids:?}");
+    }
 }

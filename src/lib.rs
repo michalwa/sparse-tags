@@ -16,6 +16,8 @@ pub use indexed::IndexedStore;
 /// the entry, there are no guarantees about what the index will point to and
 /// should not be used anymore.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(transparent))]
 pub struct EntryId(usize);
 
 /// Represents a data structure which stores a list of _entries_, identified by
