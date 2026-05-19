@@ -85,8 +85,26 @@ pub trait Store<K, V, E = ()> {
         V: 'a;
 
     /// Returns an iterator over tags with the given key and the associated
-    /// entry IDs
-    fn tags_by_key<'a>(&'a self, _: &K) -> impl Iterator<Item = (EntryId, &'a V)>
+    /// entry IDs.
+    ///
+    /// The key is not captured by the iterator and is only borrowed for the
+    /// duration of this function. This reduces the lifetime constraints and
+    /// allows the following:
+    ///
+    /// ```
+    /// use sparse_tags::{EntryId, Store};
+    ///
+    /// fn return_keys_iter<'a, V: 'a, E>(
+    ///     store: &'a impl Store<String, V, E>,
+    /// ) -> impl Iterator<Item = (EntryId, &'a V)> {
+    ///     let key = "Hello".into();
+    ///     store.tags_by_key(&key)
+    /// }
+    /// ```
+    fn tags_by_key<'a>(
+        &'a self,
+        _: &K,
+    ) -> impl Iterator<Item = (EntryId, &'a V)> + use<'a, Self, K, V, E>
     where
         V: 'a;
 

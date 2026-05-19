@@ -11,7 +11,12 @@ pub struct NaiveStore<K, V, E = ()> {
     entries: StableVec<(E, Vec<(K, V)>)>,
 }
 
-impl<K: Hash + Eq, V, E> Store<K, V, E> for NaiveStore<K, V, E> {
+// NOTE: Because of the linear scan, `tags_by_key` must borrow the key to perform
+// equality checks. However, `Store` explicitly forbids this to give users looser
+// lifetime bounds. Therefore, to implement this method, `NativeStore` requires
+// the key to be `Clone`. This is very suboptimal, but it doesn't matter for this
+// implementation.
+impl<K: Hash + Eq + Clone, V, E> Store<K, V, E> for NaiveStore<K, V, E> {
     fn len(&self) -> usize {
         self.entries.num_elements()
     }
@@ -104,13 +109,19 @@ impl<K: Hash + Eq, V, E> Store<K, V, E> for NaiveStore<K, V, E> {
         self.entries[id.0].1.iter().map(|(k, v)| (k, v))
     }
 
-    fn tags_by_key<'a>(&'a self, key: &K) -> impl Iterator<Item = (EntryId, &'a V)>
+    fn tags_by_key<'a>(
+        &'a self,
+        key: &K,
+    ) -> impl Iterator<Item = (EntryId, &'a V)> + use<'a, K, V, E>
     where
         V: 'a,
     {
+        let key = key.clone();
+
         self.entries.iter().flat_map(move |(id, (_, ts))| {
+            let key = key.clone();
             ts.iter()
-                .filter(move |(k, _)| k == key)
+                .filter(move |(k, _)| *k == key)
                 .map(move |(_, v)| (EntryId(id), v))
         })
     }

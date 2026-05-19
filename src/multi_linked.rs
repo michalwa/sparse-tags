@@ -281,7 +281,7 @@ impl<K: Hash + Eq, V, E> Store<K, V, E> for MultiLinkedStore<K, V, E> {
         })
     }
 
-    fn tags_by_key<'a>(&'a self, k: &K) -> impl Iterator<Item = (EntryId, &'a V)>
+    fn tags_by_key<'a>(&'a self, k: &K) -> impl Iterator<Item = (EntryId, &'a V)> + use<'a, K, V, E>
     where
         V: 'a,
     {

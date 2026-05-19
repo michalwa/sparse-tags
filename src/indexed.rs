@@ -172,7 +172,7 @@ impl<K: Hash + Eq, V, E> Store<K, V, E> for IndexedStore<K, V, E> {
             .map(|t| (self.key_indices.get_index(t.key_index).unwrap().0, &t.value))
     }
 
-    fn tags_by_key<'a>(&'a self, k: &K) -> impl Iterator<Item = (EntryId, &'a V)>
+    fn tags_by_key<'a>(&'a self, k: &K) -> impl Iterator<Item = (EntryId, &'a V)> + use<'a, K, V, E>
     where
         V: 'a,
     {
