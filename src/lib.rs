@@ -2,11 +2,13 @@
 
 use std::hash::Hash;
 
+pub mod indexed;
+#[cfg(test)]
+mod multi_linked;
 #[cfg(test)]
 mod naive;
-pub mod sparse;
 
-pub use sparse::SparseStore;
+pub use indexed::IndexedStore;
 
 /// A stable index of a collection of tags in a [`Store`]. As long as an entry
 /// is not removed from a [`Store`], other insertions and removals will not
@@ -85,7 +87,7 @@ pub trait Store<K, V, E = ()> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Store, naive::NaiveStore, sparse::SparseStore};
+    use crate::{Store, indexed::IndexedStore, multi_linked::MultiLinkedStore, naive::NaiveStore};
 
     fn test_store(mut store: impl Store<&'static str, i32, &'static str>) {
         let e1 = store.insert_entry_with("e1", [("foo", 1), ("bar", 2)]);
@@ -147,28 +149,13 @@ mod tests {
     }
 
     #[test]
-    fn sparse() {
-        test_store(SparseStore::default());
+    fn multi_linked() {
+        test_store(MultiLinkedStore::default());
     }
 
     #[test]
-    fn sparse_remove_cross_axis() {
-        let mut store = SparseStore::default();
-
-        let e1 = store.insert_entry_with((), [("foo", 1), ("bar", 2)]);
-        let e2 = store.insert_entry_with((), [("foo", 3)]);
-        let e3 = store.insert_entry_with((), [("foo", 4), ("bar", 5)]);
-        let e4 = store.insert_entry_with((), [("bar", 6)]);
-
-        store.remove_entry(e1);
-        store.remove_entry(e2);
-        store.remove_entry(e4);
-
-        assert_eq!(
-            store.tags_by_entry(e3).collect::<Vec<_>>(),
-            [(&"foo", &4), (&"bar", &5)]
-        );
-        assert_eq!(store.tags_by_key(&"foo").collect::<Vec<_>>(), [(e3, &4)]);
+    fn indexed() {
+        test_store(IndexedStore::default());
     }
 }
 
@@ -182,7 +169,7 @@ mod benches {
     };
     use test::Bencher;
 
-    use crate::{Store, naive::NaiveStore, sparse::SparseStore};
+    use crate::{Store, indexed::IndexedStore, multi_linked::MultiLinkedStore, naive::NaiveStore};
 
     fn populate_store(store: &mut impl Store<String, String>) {
         // Optionally reduce the size of test fixtures to speed up testing
@@ -239,8 +226,22 @@ mod benches {
     }
 
     #[bench]
-    fn sparse_search(b: &mut Bencher) {
-        let mut store = SparseStore::new();
+    fn multi_linked_search(b: &mut Bencher) {
+        let mut store = MultiLinkedStore::default();
+        populate_store(&mut store);
+
+        let search_tag = store.keys().choose(&mut rand::rng()).unwrap();
+
+        b.iter(|| {
+            for x in store.tags_by_key(search_tag) {
+                std::hint::black_box(x);
+            }
+        });
+    }
+
+    #[bench]
+    fn indexed_search(b: &mut Bencher) {
+        let mut store = IndexedStore::default();
         populate_store(&mut store);
 
         let search_tag = store.keys().choose(&mut rand::rng()).unwrap();
@@ -265,8 +266,8 @@ mod benches {
     }
 
     #[bench]
-    fn sparse_iter(b: &mut Bencher) {
-        let mut store = SparseStore::new();
+    fn multi_linked_iter(b: &mut Bencher) {
+        let mut store = MultiLinkedStore::default();
         populate_store(&mut store);
 
         b.iter(|| {
@@ -275,4 +276,55 @@ mod benches {
             }
         });
     }
+
+    #[bench]
+    fn indexed_iter(b: &mut Bencher) {
+        let mut store = IndexedStore::default();
+        populate_store(&mut store);
+
+        b.iter(|| {
+            for x in store.entries() {
+                std::hint::black_box(x);
+            }
+        });
+    }
+
+    fn bench_insertion(b: &mut Bencher, mut store: impl Store<String, String>) {
+        let entry_ids = store.entry_ids().collect::<Vec<_>>();
+        let tag_keys = store.keys().cloned().collect::<Vec<_>>();
+
+        b.iter(|| {
+            let entry = *entry_ids.choose(&mut rand::rng()).unwrap();
+            let key = tag_keys.choose(&mut rand::rng()).unwrap().clone();
+
+            store.insert_tag(entry, key, random_string());
+        });
+    }
+
+    #[bench]
+    fn naive_insert(b: &mut Bencher) {
+        let mut store = NaiveStore::default();
+        populate_store(&mut store);
+        bench_insertion(b, store);
+    }
+
+    #[bench]
+    fn multi_linked_insert(b: &mut Bencher) {
+        let mut store = MultiLinkedStore::default();
+        populate_store(&mut store);
+        bench_insertion(b, store);
+    }
+
+    #[bench]
+    fn indexed_insert(b: &mut Bencher) {
+        let mut store = IndexedStore::default();
+        populate_store(&mut store);
+        bench_insertion(b, store);
+    }
+
+    // NOTE: Entry removal benchmark omitted, because not knowing the number of
+    // iterations, it requires checking whether the store has been emptied and
+    // repopulating it within the benchmark closure, which obviously influences
+    // the results; or pairing the removal with an insertion, which defeats the
+    // point.
 }

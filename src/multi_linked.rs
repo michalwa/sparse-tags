@@ -6,9 +6,21 @@ use stable_vec::StableVec;
 
 use crate::{EntryId, Store};
 
-/// A 2-axis doubly-linked list implementation of a [`Store`]. Refer to
-/// [`Store`] for more general documentation.
-pub struct SparseStore<K, V, E = ()> {
+/// A multi-linked list implementation of a [`Store`]
+///
+/// Fares significantly worse than [`IndexedStore`], especially in search, but
+/// kept for reference and because it's cool-looking (:
+///
+/// Internally represented as a graph of nodes, each of which represents an
+/// instance of a tag associated with an entry, and stores double-linked
+/// pointers in 2 axes: the entry chain and tag chain. The entry chain connects
+/// nodes which share the same [`EntryId`] and the tag chains (one for each key
+/// `K`) connect nodes with the same tag key `K`.
+///
+/// This implementation effectively has the same time complexities as
+/// [`IndexedStore`] and my guess for why it ends up doing worse is worse cache
+/// locality.
+pub struct MultiLinkedStore<K, V, E = ()> {
     /// Uses `StableVec` instead of `Slab` to preserve the insertion order
     entries: StableVec<Entry<E>>,
     key_lists: IndexMap<K, NodeList<KeyAxis>>,
@@ -149,7 +161,7 @@ impl NodeList<EntryAxis> {
     }
 }
 
-impl<K, V, E> Default for SparseStore<K, V, E> {
+impl<K, V, E> Default for MultiLinkedStore<K, V, E> {
     fn default() -> Self {
         Self {
             entries: StableVec::new(),
@@ -159,13 +171,7 @@ impl<K, V, E> Default for SparseStore<K, V, E> {
     }
 }
 
-impl<K, V, E> SparseStore<K, V, E> {
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
-impl<K: Hash + Eq, V, E> Store<K, V, E> for SparseStore<K, V, E> {
+impl<K: Hash + Eq, V, E> Store<K, V, E> for MultiLinkedStore<K, V, E> {
     fn len(&self) -> usize {
         self.entries.num_elements()
     }
@@ -271,7 +277,7 @@ impl<K: Hash + Eq, V, E> Store<K, V, E> for SparseStore<K, V, E> {
 
 struct Iter<'a, K, V, E, A: Axis> {
     _marker: PhantomData<A>,
-    store: &'a SparseStore<K, V, E>,
+    store: &'a MultiLinkedStore<K, V, E>,
     index: Option<usize>,
 }
 
