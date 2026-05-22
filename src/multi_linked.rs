@@ -285,14 +285,16 @@ impl<K: Hash + Eq, V, E> Store<K, V, E> for MultiLinkedStore<K, V, E> {
     where
         V: 'a,
     {
-        Iter::<_, _, _, KeyAxis> {
-            _marker: PhantomData,
-            store: self,
-            index: self.key_lists[k].first(),
-        }
-        .map(|i| {
-            let node = &self.nodes[i];
-            (node.entry, &node.value)
+        self.key_lists.get(k).into_iter().flat_map(|list| {
+            Iter::<_, _, _, KeyAxis> {
+                _marker: PhantomData,
+                store: self,
+                index: list.first(),
+            }
+            .map(|i| {
+                let node = &self.nodes[i];
+                (node.entry, &node.value)
+            })
         })
     }
 }

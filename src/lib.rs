@@ -182,6 +182,8 @@ mod tests {
         );
         assert_eq!(store.tags_by_key(&"baz").collect::<Vec<_>>(), [(e5, &5)]);
 
+        assert_eq!(store.tags_by_key(&"nonexistent").collect::<Vec<_>>(), []);
+
         store.remove_entry(e2);
 
         assert_eq!(store.entry_ids().collect::<Vec<_>>(), [e1, e4, e5]);

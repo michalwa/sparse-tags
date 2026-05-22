@@ -176,11 +176,13 @@ impl<K: Hash + Eq, V, E> Store<K, V, E> for IndexedStore<K, V, E> {
     where
         V: 'a,
     {
-        self.key_indices[k].iter().map(|(_, &index)| {
-            (
-                index.entry,
-                &self.entries[index.entry.0].tags[index.tag].value,
-            )
+        self.key_indices.get(k).into_iter().flat_map(|indices| {
+            indices.iter().map(|(_, &index)| {
+                (
+                    index.entry,
+                    &self.entries[index.entry.0].tags[index.tag].value,
+                )
+            })
         })
     }
 }
