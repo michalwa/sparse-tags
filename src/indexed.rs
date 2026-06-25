@@ -99,6 +99,10 @@ impl<K: Hash + Eq, V, E> Store<K, V, E> for IndexedStore<K, V, E> {
         }
     }
 
+    fn entry_exists(&self, id: EntryId) -> bool {
+        self.entries.has_element_at(id.0)
+    }
+
     fn entry_data(&self, id: EntryId) -> &E {
         &self.entries[id.0].data
     }

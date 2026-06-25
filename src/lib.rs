@@ -44,6 +44,7 @@ pub trait Store<K, V, E = ()> {
     /// inserting the entry, but preserves the index.
     fn clear_entry(&mut self, _: EntryId);
 
+    fn entry_exists(&self, _: EntryId) -> bool;
     fn entry_data(&self, _: EntryId) -> &E;
     fn entry_data_mut(&mut self, _: EntryId) -> &mut E;
 
@@ -130,8 +131,10 @@ mod tests {
         let e4 = store.insert_entry_with("e4", [("bar", 4)]);
 
         assert_eq!(store.len(), 4);
+        assert!(store.entry_exists(e3));
 
         store.remove_entry(e3);
+        assert!(!store.entry_exists(e3));
         let e5 = store.insert_entry_with("e5", [("baz", 5)]);
 
         assert_eq!(store.len(), 4);

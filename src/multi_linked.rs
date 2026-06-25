@@ -207,6 +207,10 @@ impl<K: Hash + Eq, V, E> Store<K, V, E> for MultiLinkedStore<K, V, E> {
             .clear_entry(&mut self.nodes, &mut self.key_lists);
     }
 
+    fn entry_exists(&self, id: EntryId) -> bool {
+        self.entries.has_element_at(id.0)
+    }
+
     fn entry_data(&self, id: EntryId) -> &E {
         &self.entries[id.0].data
     }

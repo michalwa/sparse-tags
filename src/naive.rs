@@ -41,6 +41,10 @@ impl<K: Hash + Eq + Clone, V, E> Store<K, V, E> for NaiveStore<K, V, E> {
         self.entries[id.0].1.clear();
     }
 
+    fn entry_exists(&self, id: EntryId) -> bool {
+        self.entries.has_element_at(id.0)
+    }
+
     fn entry_data(&self, id: EntryId) -> &E {
         &self.entries[id.0].0
     }
